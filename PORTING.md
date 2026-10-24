@@ -87,12 +87,14 @@ The `cub/cub.cuh` shim redirects to `<hipcub/hipcub.hpp>` and creates
 `cuco::bloom_filter` / `cuco::static_set` are excluded from `CUDA_SOURCES`.
 The PIMPL'd header (`sirius_dynamic_filter.hpp`) still compiles.
 
-### 3.5 cuCascade → stub (cuda2rocm cucascade-rocm/, via FetchContent)
+### 3.5 cuCascade → cucascade-rocm (cuda2rocm, via FetchContent)
 
 `SIRIUS_ENABLE_CUCASCADE` defaults OFF on ROCm. Instead of the real cuCascade
-submodule, 32 stub headers provide ~70 types so 63 `.cpp` files compile.
-Stub methods throw `std::runtime_error("cuCascade stub")` at runtime →
-graceful degradation to DuckDB CPU execution.
+submodule, cucascade-rocm's 32 headers provide ~70 types so 63 `.cpp` files
+compile. All 32 are real implementations now — the last two (the disk data
+clone and the numa pinned allocator) landed in October 2026. None of the
+runtime side has run on gfx942 yet, and with the gate off, execution still
+falls back to DuckDB CPU as before.
 
 ## 4. Compatibility Shim Design
 
