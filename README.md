@@ -13,11 +13,12 @@ sirius-rocm/
 ├── CMakeLists.txt              # Top-level overlay: sets ENABLE_ROCM + delegates to submodule
 ├── sirius/                     # Git submodule → sirius-db/sirius (pinned commit)
 ├── patches/
-│   ├── rocm-source-fixes.patch         # Committed ROCm changes (CMakeLists, pixi.toml, shuffle masks)
-│   └── rocm-uncommitted-fixes.patch    # Latest ROCm fixes (bitpacking lane, find_package(rmm), build scripts)
+│   └── cuco_compat.hpp                 # cuco API compat header, used by patch_hipdf_cuco.sh
 ├── scripts/
-│   ├── setup.sh                # Init submodule + apply patches
+│   ├── setup.sh                # Init submodule + apply whatever patches/ contains
 │   ├── build_rocm_deps.sh      # Build + install hipDF (cuDF for HIP) + hipMM (RMM for HIP)
+│   ├── detect_gpu_arch.sh      # Auto-detect AMD GPU arch (asks when none found)
+│   ├── patch_hipdf_cuco.sh     # Patch hipDF for hipCollections cuco APIs
 │   ├── hipdf_26.06_api_patch.sh # Patch hipDF 25.10 with cuDF 26.06 APIs Sirius needs
 │   └── run_tpch_rocm.sh        # End-to-end TPC-H: build → generate data → run 22 queries
 ├── .github/workflows/
@@ -31,24 +32,24 @@ sirius-rocm/
 | Dependency | Source | How consumed |
 |---|---|---|
 | [sirius-db/sirius](https://github.com/sirius-db/sirius) | Git submodule | Pinned to commit `e88da526` |
-| [cuda2rocm](https://github.com/hamstergamerszhang-ops/cuda2rocm) | GitHub | CMake FetchContent (pinned URL + SHA256) |
+| [cuda2rocm](https://github.com/hamstergamerszhang-ops/cuda2rocm) | GitHub | CI clones the default branch; the FetchContent pin lives in the fork's patched CMakeLists |
 | [hipDF](https://github.com/ROCm-DS/hipDF) (cuDF for HIP) | Built from source | `build_rocm_deps.sh` → `/opt/rocm` |
 | [hipMM](https://github.com/ROCm-DS/hipMM) (RMM for HIP) | Built from source | `build_rocm_deps.sh` → `/opt/rocm` |
 | ROCm 7.2.1+ (hipCUB, rocThrust, rocPRIM) | System install | `find_package` / system paths |
 
 ## Relationship to sirius-db/sirius and PR #1153
 
-- **PR #1153** remains open as the discussion thread with the upstream maintainer. It is **not** modified by this repo.
+- **PR #1153** is closed; the discussion with the upstream maintainer happened there.
 - This repo is the **standalone development home** for the ROCm backend, per the maintainer's request.
-- The Sirius source is consumed as a **git submodule** (not a fork), so there's no code duplication or drift.
-- Source patches (64-bit shuffle masks, CMakeLists ROCm blocks, etc.) are applied via `scripts/setup.sh` — they're additive and gated by `ENABLE_ROCM=ON`, so they don't affect the CUDA build path.
+- The Sirius source is consumed as a **git submodule** pinned to upstream `sirius-db/sirius`, so there's no code duplication or drift.
+- The ROCm source changes (64-bit shuffle masks, CMakeLists ROCm blocks, the cuda2rocm FetchContent pin) live in the [sirius fork's `feat/rocm-port` branch](https://github.com/mycomputercrashsalot/sirius/tree/feat/rocm-port). The `.patch` files this repo's docs originally described were never committed — `setup.sh`'s patch step currently applies nothing, so until the patches are regenerated from the fork, the full-build flow below doesn't complete as written.
 
 ## Current status
 
 | Component | Status |
 |---|---|
 | CUDA→HIP compat shims (cuda2rocm) | ✅ 0 compile errors on gfx942/ROCm 7.2.1 |
-| cuco-rocm (bloom_filter, static_set) | ✅ GPU tests pass: 7/7 bloom, 6/6 set, ~3M keys/s |
+| cuco-rocm (bloom_filter, static_set) | 🔧 Compiles in CI; runtime on gfx942 pending — the ~3M keys/s figure was unreproduced (see cuda2rocm's README) |
 | hipMM (RMM for HIP) | ✅ Built + installed to `/opt/rocm` on real gfx942 |
 | hipDF (cuDF for HIP) | 🔧 Build in progress — 5 hardware-specific fixes applied |
 | Sirius end-to-end build | 🔧 Not yet built (blocked on hipDF completion) |
@@ -71,7 +72,7 @@ See `PORTING.md` §8 for full details.
 git clone --recursive https://github.com/hamstergamerszhang-ops/sirius-rocm.git
 cd sirius-rocm
 
-# Apply ROCm patches to the Sirius submodule
+# Init the Sirius submodule (+ apply whatever is in patches/)
 ./scripts/setup.sh
 
 # Build hipDF + hipMM (one-time, ~30 min)
