@@ -33,7 +33,9 @@ concurrency:
 jobs:
   shim-compile-test:
     name: Shim compile test (gfx942)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest flipped to 26.04, where the ROCm 6.2 repo's
+    # packages don't resolve. Bump when ROCm ships 26.04 packages.
+    runs-on: ubuntu-24.04
     # When a self-hosted ROCm runner is available, use it instead:
     # runs-on: [self-hosted, rocm, gfx942]
     steps:
