@@ -61,8 +61,9 @@ jobs:
           # On a self-hosted runner with ROCm pre-installed, this step is a no-op.
           if ! command -v hipcc &>/dev/null; then
             echo "WARNING: hipcc not found. Installing ROCm packages..."
-            wget -qO - https://repo.radeon.com/rocm/rocm.gpg.key | sudo apt-key add -
-            echo "deb [arch=amd64] https://repo.radeon.com/rocm/apt/6.2 noble main" | sudo tee /etc/apt/sources.list.d/rocm.list
+            wget -qO - https://repo.radeon.com/rocm/rocm.gpg.key \
+              | gpg --dearmor | sudo tee /usr/share/keyrings/rocm.gpg > /dev/null
+            echo "deb [arch=amd64 signed-by=/usr/share/keyrings/rocm.gpg] https://repo.radeon.com/rocm/apt/6.2 noble main" | sudo tee /etc/apt/sources.list.d/rocm.list
             # ubuntu-latest's own noble repos already ship generic hipcc/
             # rocminfo/rocm-cmake packages (versioned e.g. 6.0.0-1) that
             # satisfy other preinstalled packages' deps -- apt's default
